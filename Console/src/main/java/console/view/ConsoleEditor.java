@@ -48,8 +48,10 @@ public class ConsoleEditor extends JEditorPane{
 		switch(c) {
 		case '\n':
 			if(this.query.length()!=0) {
-				this.queryHistory.push(this.query.toString());
-				this.cmdCtrl.execute(query.toString());
+				boolean r = this.cmdCtrl.execute(query.toString());
+				if(r) {
+					this.queryHistory.push(this.query.toString());
+				}
 				this.query = new StringBuilder();
 			}
 			this.setEntry();

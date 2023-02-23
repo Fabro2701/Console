@@ -15,38 +15,29 @@ import console.view.ConsoleEditor;
 
 public class CommandController {
 	ConsoleEditor editor;
-	private static Map<String, Options> options;
+	private Map<String, Options> options;
 	private static CommandLineParser parser = new DefaultParser();
+	private OptionsModel model;
 	
-	static {
-		buildOptions();
+	public CommandController(OptionsModel model) {
+		options = model.buildOptions();
+		this.model = model;
 	}
-	public CommandController() {
-
-	}
-	private static void buildOptions() {
-		options = new HashMap<>();
-		
-		Options ops = new Options();
-		ops.addOption(Option.builder("f").longOpt("file").hasArg().build());
-		
-		options.put("save", ops); 
-	}
-	public void execute(String query) {
+	public boolean execute(String query) {
 		String args[] = query.split(" ");
+		if(!options.containsKey(args[0])) {
+			editor.insertString(args[0]+" command not supported\n");
+			return false;
+		}
 		try {
 			CommandLine cmd = parser.parse(options.get(args[0]), Arrays.copyOfRange(args, 1, args.length));
-			if(cmd.getOptions().length==0) {
-				editor.insertString("No commands found\n");
-			}
-			if(cmd.hasOption("file")) {
-				editor.insertString(cmd.getOptionValue("file")+'\n');
-		         System.out.println(cmd.getOptionValue("file"));
-		     }
+			return model.execute(cmd, editor);
+			
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return false;
 	}
 	public void setEditor(ConsoleEditor consoleEditor) {
 		this.editor = consoleEditor;
