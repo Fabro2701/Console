@@ -3,6 +3,7 @@ package console.view;
 import java.awt.Color;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.LinkedList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,7 +19,7 @@ public class ConsoleEditor extends JEditorPane{
 	ConsoleKeyListener keylist;
 	char last;
 	StringBuilder query;
-	String lastQuery;
+	QueryHistory queryHistory;
 	CommandController cmdCtrl;
 	
 	Pattern allowedChars = Pattern.compile("[\\d\\w\\s._-]");
@@ -28,6 +29,7 @@ public class ConsoleEditor extends JEditorPane{
 		this.cmdCtrl = cmdCtrl;
 		this.cmdCtrl.setEditor(this);
 		query = new StringBuilder();
+		queryHistory = new QueryHistory(5);
 		
 		this.putClientProperty("caretWidth", 2);
 		this.setBackground(Color.black);
@@ -46,7 +48,7 @@ public class ConsoleEditor extends JEditorPane{
 		switch(c) {
 		case '\n':
 			if(this.query.length()!=0) {
-				this.lastQuery = this.query.toString();
+				this.queryHistory.push(this.query.toString());
 				this.cmdCtrl.execute(query.toString());
 				this.query = new StringBuilder();
 			}
@@ -65,8 +67,10 @@ public class ConsoleEditor extends JEditorPane{
 			SwingUtilities.invokeLater(()->{
 				switch(e.getKeyCode()) {
 				case KeyEvent.VK_UP:
-					editor.query = new StringBuilder(editor.lastQuery);
-					editor.insertString(editor.query.toString(), true);
+					editor.removeCurrentQuery();
+					String s = editor.queryHistory.getPreviousQuery();
+					editor.query = new StringBuilder(s);
+					editor.insertString(s, true);
 					try {
 						Thread.sleep(100);
 					} catch (InterruptedException e1) {
@@ -86,6 +90,14 @@ public class ConsoleEditor extends JEditorPane{
 	private void setEntry() {
 		insertString(Constants.entryString, true);
 	}
+	public void removeCurrentQuery() {
+		Document doc = this.getDocument();
+		try {
+			doc.remove(doc.getLength()-this.query.length(), this.query.length());
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+	}
 	public void insertString(String s) {
 		insertString(s, false);
 	}
@@ -97,5 +109,68 @@ public class ConsoleEditor extends JEditorPane{
 		} catch (BadLocationException e) {
 			e.printStackTrace();
 		}
+	}
+	private static class QueryHistory{
+		private Node current, last;
+		int capacity, used;
+		public QueryHistory(int capacity) {
+			this.capacity = capacity;
+			this.used = 0;
+		}
+		private class Node{
+			Node next,prev;
+			String value;
+			@Override public String toString() {return value;}
+		}
+		public void push(String query) {
+			if(current==null) {
+				current = new Node();
+				current.value = query;
+				current.next = current;
+				current.prev = current;
+				last = current;
+				used++;
+			}
+			else {
+				if(used<capacity) {
+					Node newnode = new Node();
+					newnode.value = query;
+					newnode.prev = current;
+					newnode.next = current.next;
+
+					current.next.prev = newnode;
+					current.next = newnode;
+					
+					current = newnode;
+					used++;
+				}
+				else {
+					current = current.next;
+					current.value = query;
+				}
+				last = current;
+			}
+		}
+		public String getPreviousQuery() {
+			String aux = last.value;
+			last = last.prev;
+			return aux;
+		}
+	}
+	public static void main(String args[]) {
+		QueryHistory q = new QueryHistory(3);
+		q.push("1");
+		System.out.println(q.getPreviousQuery());
+		q.push("2");
+		System.out.println(q.getPreviousQuery());
+		q.push("3");
+		System.out.println(q.getPreviousQuery());
+		q.push("4");
+		System.out.println(q.getPreviousQuery());
+		System.out.println(q.getPreviousQuery());
+		System.out.println(q.getPreviousQuery());
+		System.out.println(q.getPreviousQuery());
+		System.out.println(q.getPreviousQuery());
+		System.out.println(q.getPreviousQuery());
 	}
 }
