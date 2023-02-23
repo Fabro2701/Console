@@ -7,10 +7,13 @@ import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 
+import console.model.CommandController;
+
 public class AbstractConsoleGUI extends JFrame{
 	ConsoleEditor editor;
 	JScrollPane scrollpane;
-	public AbstractConsoleGUI(int w, int h) {
+	
+	public AbstractConsoleGUI(int w, int h, CommandController cmdCtrl) {
 		Dimension d = new Dimension(w,h);
 		this.setPreferredSize(d);
 		this.setMinimumSize(d);
@@ -18,7 +21,7 @@ public class AbstractConsoleGUI extends JFrame{
 		
 		
 		scrollpane = new JScrollPane();
-		editor = new ConsoleEditor();
+		editor = new ConsoleEditor(cmdCtrl);
 		
 		scrollpane.setViewportView(editor);
 		this.setContentPane(scrollpane);
