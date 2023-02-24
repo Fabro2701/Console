@@ -2,6 +2,7 @@ package console.model;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -15,20 +16,24 @@ public class TestOptionsModel implements OptionsModel{
 	public Map<String, Options> buildOptions() {
 		Map<String, Options> options = new HashMap<>();
 		
-		Options ops = new Options();
-		ops.addOption(Option.builder("f").longOpt("file").hasArg().build());
-		
-		options.put("save", ops);
+		options.put("save", saveOption());
 		
 		return options;
 	}
-
 	@Override
-	public boolean execute(CommandLine cmd, ConsoleEditor editor) {
-		/*if(cmd.getOptions().length==0) {
-			editor.insertString("No commands found\n");
-			return false;
-		}*/
+	public Map<String, BiFunction<CommandLine, ConsoleEditor, Boolean>> buildActions() {
+		Map<String, BiFunction<CommandLine,ConsoleEditor,Boolean>> actions = new HashMap<>();
+		
+		actions.put("save", (c,e)->saveAction(c,e));
+		
+		return actions;
+	}
+	private Options saveOption() {
+		Options ops = new Options();
+		ops.addOption(Option.builder("f").longOpt("file").hasArg().build());
+		return ops;
+	}
+	private Boolean saveAction(CommandLine cmd, ConsoleEditor editor){
 		if(cmd.hasOption("file")) {
 			editor.insertString(cmd.getOptionValue("file")+'\n');
 			return true;
