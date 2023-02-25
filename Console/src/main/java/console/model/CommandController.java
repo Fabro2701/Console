@@ -30,7 +30,7 @@ public class CommandController {
 		this.options = model.buildOptions();
 		this.actions = model.buildActions();
 		if(!this.options.keySet().equals(this.actions.keySet())) {
-			System.err.println("Options and Actiones keys dont match");
+			System.err.println("Options and Actions keys dont match");
 		}
 		this.model = model;
 	}
@@ -45,7 +45,6 @@ public class CommandController {
 			return actions.get(args[0]).apply(cmd, editor);
 			
 		} catch (ParseException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return false;

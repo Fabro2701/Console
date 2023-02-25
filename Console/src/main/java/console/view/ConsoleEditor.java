@@ -5,10 +5,15 @@ import java.awt.event.KeyEvent;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.swing.JEditorPane;
+import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
+import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.Document;
+import javax.swing.text.DocumentFilter;
+import javax.swing.text.Element;
+import javax.swing.text.DocumentFilter.FilterBypass;
 
 import console.Constants;
 import console.model.CommandController;
@@ -16,26 +21,23 @@ import console.model.CommandController;
 /**
  * ConsoleEditor represents the terminal UI.
  * Sends the queries(commands) to {@code CommandController}.
- * And handles everything related to the {@link #getCaret()}, queries history and messages from {@code OptionsModel} 
+ * And handles everything related to the queries history and the messages received from {@code OptionsModel} 
  * 
  * @author Fabrizio Ortega
  *
  */
-public class ConsoleEditor extends JEditorPane{
-	char last;
-	StringBuilder query;
-	int queryShift;//to handle backspaces and left-right movs
+public class ConsoleEditor extends JTextPane{
+	char last; 
 	QueryHistory queryHistory;
 	CommandController cmdCtrl;
 	
-	Pattern allowedChars = Pattern.compile("[\\d\\w\\s._-]");
-	
 	public ConsoleEditor(CommandController cmdCtrl) {
 		super();
+		((DefaultStyledDocument)this.getDocument()).setDocumentFilter(new CustomDocumentFilter());
+
 		this.cmdCtrl = cmdCtrl;
 		this.cmdCtrl.setEditor(this);
-		query = new StringBuilder();
-		queryShift = 0;
+
 		queryHistory = new QueryHistory(Constants.Query_History_Capacity);
 		
 		this.putClientProperty("caretWidth", 2);
@@ -51,16 +53,14 @@ public class ConsoleEditor extends JEditorPane{
 		this.setEntry();
 	}
 	public void notify(char c) {
-
 		switch(c) {
 		case '\n':
-			if(this.query.length()!=0) {
-				boolean r = this.cmdCtrl.execute(query.toString());
-				if(r) {
-					this.queryHistory.push(this.query.toString());
+			String lineText = this.getCurrentQuery();
+			if(lineText.length()>0) {
+				boolean r = this.cmdCtrl.execute(lineText);
+				if(r||Constants.Save_Incorrect_Commands) {
+					this.queryHistory.push(lineText);
 				}
-				this.query = new StringBuilder();
-				queryShift = 0;
 			}
 			this.setEntry();
 			break;
@@ -76,40 +76,12 @@ public class ConsoleEditor extends JEditorPane{
 	    public void keyPressed(KeyEvent e) {
 			SwingUtilities.invokeLater(()->{
 				switch(e.getKeyCode()) {
-				case KeyEvent.VK_UP:
+				case KeyEvent.VK_UP://retrive last query
 					editor.removeCurrentQuery();
-					String s = editor.queryHistory.getPreviousQuery();
-					editor.query = new StringBuilder(s);
-					editor.queryShift = s.length();
-					editor.insertString(s, true);
-					try {
-						Thread.sleep(100);
-					} catch (InterruptedException e1) {
-						e1.printStackTrace();
-					}
-					break;
-				case KeyEvent.VK_LEFT:
-					editor.queryShift--;
-					//System.out.println(editor.queryShift);
-					break;
-				case KeyEvent.VK_RIGHT:
-					editor.queryShift++;
-					break;
-				case KeyEvent.VK_BACK_SPACE:
-					editor.query.deleteCharAt(editor.queryShift-1);
-					editor.queryShift--;
-					//System.out.println(editor.query.toString());
-					//System.out.println(editor.queryShift);
+					editor.insertString(editor.queryHistory.getPreviousQuery(), true);
 					break;
 				}
 				editor.last = e.getKeyChar();
-				Matcher m = allowedChars.matcher(editor.last+"");
-				
-				if(editor.last=='\n')editor.notify(editor.last);
-				else if(m.find()) {
-					editor.query.append(editor.last);
-					editor.queryShift++;
-				}
 			});
 	    }
 	}
@@ -124,15 +96,50 @@ public class ConsoleEditor extends JEditorPane{
 	 */
 	public void removeCurrentQuery() {
 		Document doc = this.getDocument();
+		String lineText = this.getCurrentQuery();
+		
 		try {
-			doc.remove(doc.getLength()-this.query.length(), this.query.length());
+			doc.remove(doc.getLength()-lineText.length(), lineText.length());
 		} catch (BadLocationException e) {
 			e.printStackTrace();
 		}
 	}
+	/**
+	 * Finds the text after the last initial symbol
+	 * @return the current query or ""
+	 */
+	private String getCurrentQuery() {
+		Document doc = this.getDocument();
+		
+		int endPosition = doc.getLength() - 1;
+		Element root = doc.getDefaultRootElement();
+		int endLine = root.getElementIndex(endPosition);
+
+		Element lineElement = root.getElement(endLine);
+		int start = lineElement.getStartOffset();
+		int end = lineElement.getEndOffset() - 1;
+
+		String lineText;
+		try {
+		    lineText = this.getDocument().getText(start, end - start);
+			lineText = lineText.substring(1);
+		} catch (BadLocationException ex) {
+		    lineText = "";
+		}
+		return lineText;
+	}
+	/**
+	 * Inserts the string
+	 * @param s
+	 */
 	public void insertString(String s) {
 		insertString(s, false);
 	}
+	/**
+	 * Inserts the string and move the caret to the end of the doc
+	 * @param s
+	 * @param moveCaret
+	 */
 	public void insertString(String s, boolean moveCaret) {
 		Document doc = this.getDocument();
 		try {
@@ -154,6 +161,10 @@ public class ConsoleEditor extends JEditorPane{
 			String value;
 			@Override public String toString() {return value;}
 		}
+		/**
+		 * Pushes a given query to the list or replace the oldest if the new size exceeds the {@link #capacity}
+		 * @param query
+		 */
 		public void push(String query) {
 			if(current==null) {
 				current = new Node();
@@ -183,12 +194,34 @@ public class ConsoleEditor extends JEditorPane{
 				last = current;
 			}
 		}
+		/**
+		 * Retrieves the last refereced query
+		 * @return
+		 */
 		public String getPreviousQuery() {
 			if(last==null)return "";
 			String aux = last.value;
 			last = last.prev;
 			return aux;
 		}
+	}
+	private class CustomDocumentFilter extends DocumentFilter {
+		@Override
+		public void insertString(DocumentFilter.FilterBypass fb, int offset, String text, AttributeSet attrs) throws BadLocationException {
+			if(text.charAt(0)=='\n') {
+				super.insertString(fb, ConsoleEditor.this.getDocument().getLength(), text, attrs);
+				ConsoleEditor.this.notify(text.charAt(0));
+			}
+			else super.insertString(fb, offset, text, attrs);
+		}
+	    @Override
+	    public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+			if(text.charAt(0)=='\n') {
+				super.insertString(fb, ConsoleEditor.this.getDocument().getLength(), text, attrs);
+				ConsoleEditor.this.notify(text.charAt(0));
+			}
+			else super.replace(fb, offset, length, text, attrs);
+	    }
 	}
 	/*public static void main(String args[]) {
 		QueryHistory q = new QueryHistory(3);
@@ -206,4 +239,7 @@ public class ConsoleEditor extends JEditorPane{
 		System.out.println(q.getPreviousQuery());
 		System.out.println(q.getPreviousQuery());
 	}*/
+	public void moveCaretToEnd() {
+		this.setCaretPosition(this.getDocument().getLength());
+	}
 }
