@@ -35,7 +35,7 @@ public class TestOptionsModel implements OptionsModel{
 	}
 	private Boolean saveAction(CommandLine cmd, ConsoleEditor editor){
 		if(cmd.hasOption("file")) {
-			editor.insertString(cmd.getOptionValue("file")+'\n');
+			editor.insertString(cmd.getOptionValue("file")+'\n', ConsoleEditor.infoStyle);
 			return true;
 		}
 		return false;

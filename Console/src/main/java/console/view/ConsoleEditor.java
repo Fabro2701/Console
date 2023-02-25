@@ -1,9 +1,8 @@
 package console.view;
 
+import java.awt.Color;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
@@ -13,8 +12,10 @@ import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.Document;
 import javax.swing.text.DocumentFilter;
 import javax.swing.text.Element;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
 import javax.swing.text.Utilities;
-import javax.swing.text.DocumentFilter.FilterBypass;
 
 import console.Constants;
 import console.model.CommandController;
@@ -32,6 +33,19 @@ public class ConsoleEditor extends JTextPane{
 	QueryHistory queryHistory;
 	CommandController cmdCtrl;
 	
+	public static Style errorStyle;
+	public static Style commandStyle;
+	public static Style infoStyle;
+	static {
+		StyleContext sc = StyleContext.getDefaultStyleContext();
+		commandStyle = sc.addStyle("CommandStyle", null);
+		StyleConstants.setForeground(commandStyle, Constants.Command_Color);
+		errorStyle = sc.addStyle("ErrorStyle", null);
+		StyleConstants.setForeground(errorStyle, Constants.Error_Color);
+		infoStyle = sc.addStyle("InfoStyle", null);
+		StyleConstants.setForeground(infoStyle, Constants.Info_Color);
+	}
+	
 	public ConsoleEditor(CommandController cmdCtrl) {
 		super();
 		((DefaultStyledDocument)this.getDocument()).setDocumentFilter(new CustomDocumentFilter());
@@ -41,10 +55,11 @@ public class ConsoleEditor extends JTextPane{
 
 		queryHistory = new QueryHistory(Constants.Query_History_Capacity);
 		
+
 		this.putClientProperty("caretWidth", 2);
 		this.setBackground(Constants.BackGround_Color);
-		this.setForeground(Constants.Text_Color);
-		this.setCaretColor(Constants.Text_Color);
+		//this.setForeground(Constants.Text_Color);
+		this.setCaretColor(Constants.Command_Color);
 		this.init();
 
 		this.addKeyListener(new ConsoleKeyListener(this));
@@ -79,7 +94,7 @@ public class ConsoleEditor extends JTextPane{
 				switch(e.getKeyCode()) {
 				case KeyEvent.VK_UP://retrive last query
 					editor.removeCurrentQuery();
-					editor.insertString(editor.queryHistory.getPreviousQuery(), true);
+					editor.insertString(editor.queryHistory.getPreviousQuery(), commandStyle, true);
 					break;
 				}
 				editor.last = e.getKeyChar();
@@ -90,7 +105,7 @@ public class ConsoleEditor extends JTextPane{
 	 * Writes the initial symbol that represents the ready state (>)
 	 */
 	private void setEntry() {
-		insertString(Constants.Entry_String, true);
+		insertString(Constants.Entry_String, commandStyle, true);
 	}
 	/**
 	 * Cleans all the text after the initial symbol
@@ -130,21 +145,30 @@ public class ConsoleEditor extends JTextPane{
 		return lineText;
 	}
 	/**
-	 * Inserts the string
+	 * Inserts a string
 	 * @param s
 	 */
 	public void insertString(String s) {
-		insertString(s, false);
+		insertString(s, this.commandStyle, false);
 	}
 	/**
-	 * Inserts the string and move the caret to the end of the doc
+	 * Inserts a string with a given style
 	 * @param s
+	 * @param style
+	 */
+	public void insertString(String s, Style style) {
+		insertString(s, style, false);
+	}
+	/**
+	 * Inserts a string with a given style and moves the caret to the end of the doc
+	 * @param s
+	 * @param style
 	 * @param moveCaret
 	 */
-	public void insertString(String s, boolean moveCaret) {
+	public void insertString(String s, Style style, boolean moveCaret) {
 		Document doc = this.getDocument();
 		try {
-			doc.insertString(doc.getLength(), s, null);
+			doc.insertString(doc.getLength(), s, style);
 			if(moveCaret)this.setCaretPosition(doc.getLength()); 
 		} catch (BadLocationException e) {
 			e.printStackTrace();

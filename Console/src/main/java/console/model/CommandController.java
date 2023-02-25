@@ -37,7 +37,7 @@ public class CommandController {
 	public boolean execute(String query) {
 		String args[] = query.split(" ");
 		if(!options.containsKey(args[0])) {
-			editor.insertString(args[0]+" command not supported\n");
+			editor.insertString(args[0]+" command not supported\n", ConsoleEditor.errorStyle);
 			return false;
 		}
 		try {
