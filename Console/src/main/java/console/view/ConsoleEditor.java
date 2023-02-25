@@ -63,7 +63,6 @@ public class ConsoleEditor extends JTextPane{
 		this.init();
 
 		this.addKeyListener(new ConsoleKeyListener(this));
-		
 	}
 	private void init() {
 		this.setEntry();
@@ -71,16 +70,21 @@ public class ConsoleEditor extends JTextPane{
 	public void notify(char c) {
 		switch(c) {
 		case '\n':
-			String lineText = this.getCurrentQuery();
-			if(lineText.length()>0) {
-				boolean r = this.cmdCtrl.execute(lineText);
+			String query = this.getCurrentQuery();
+			if(query.length()>0) {
+				boolean r = this.cmdCtrl.execute(query);
 				if(r||Constants.Save_Incorrect_Commands) {
-					this.queryHistory.push(lineText);
+					this.queryHistory.push(query);
 				}
 			}
 			this.setEntry();
 			break;
-		
+		case '\t':
+			String query2 = this.getCurrentQuery();
+			String newquery = this.cmdCtrl.autoComplete(query2);
+			this.removeCurrentQuery();
+			this.insertString(newquery, commandStyle, true);
+			break;
 		}
 	}
 	private class ConsoleKeyListener extends KeyAdapter{
@@ -174,6 +178,20 @@ public class ConsoleEditor extends JTextPane{
 			e.printStackTrace();
 		}
 	}
+	/**
+	 * Inserts string with {@link #infoStyle} style
+	 * @param s
+	 */
+	public void sendInfo(String s) {
+		insertString(s, this.infoStyle, false);
+	}
+	/**
+	 * Inserts string with {@link #errorStyle} style
+	 * @param s
+	 */
+	public void sendError(String s) {
+		insertString(s, this.errorStyle, false);
+	}
 	private static class QueryHistory{
 		private Node current, last;
 		int capacity, used;
@@ -237,12 +255,18 @@ public class ConsoleEditor extends JTextPane{
 				super.insertString(fb, ConsoleEditor.this.getDocument().getLength(), text, attrs);
 				ConsoleEditor.this.notify(text.charAt(0));
 			}
+			else if(text.charAt(0)=='\t') {
+				ConsoleEditor.this.notify(text.charAt(0));
+			}
 			else super.insertString(fb, offset, text, attrs);
 		}
 	    @Override
 	    public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
 			if(text.charAt(0)=='\n') {
 				super.insertString(fb, ConsoleEditor.this.getDocument().getLength(), text, attrs);
+				ConsoleEditor.this.notify(text.charAt(0));
+			}
+			else if(text.charAt(0)=='\t') {
 				ConsoleEditor.this.notify(text.charAt(0));
 			}
 			else super.replace(fb, offset, length, text, attrs);

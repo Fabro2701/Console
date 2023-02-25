@@ -49,6 +49,17 @@ public class CommandController {
 		}
 		return false;
 	}
+	/**
+	 * Searches a command that starts with query and return it
+	 * @param query
+	 * @return the command if exists or the query otherwise
+	 */
+	public String autoComplete(String query) {
+		for(String k:this.options.keySet()) {
+			if(k.indexOf(query)!=-1)return String.copyValueOf(k.toCharArray());
+		}
+		return query;
+	}
 	public void setEditor(ConsoleEditor consoleEditor) {
 		this.editor = consoleEditor;
 	}
