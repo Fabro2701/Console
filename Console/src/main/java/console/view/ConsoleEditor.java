@@ -13,6 +13,7 @@ import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.Document;
 import javax.swing.text.DocumentFilter;
 import javax.swing.text.Element;
+import javax.swing.text.Utilities;
 import javax.swing.text.DocumentFilter.FilterBypass;
 
 import console.Constants;
@@ -221,6 +222,12 @@ public class ConsoleEditor extends JTextPane{
 				ConsoleEditor.this.notify(text.charAt(0));
 			}
 			else super.replace(fb, offset, length, text, attrs);
+	    }
+	    @Override
+	    public void remove(FilterBypass fb, int offset, int length) throws BadLocationException {
+	    	int rowStart = Utilities.getRowStart(ConsoleEditor.this, offset);
+	    	int column = offset - rowStart;
+	    	if(column!=0)fb.remove(offset, length);
 	    }
 	}
 	/*public static void main(String args[]) {
